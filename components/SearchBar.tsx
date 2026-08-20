@@ -44,20 +44,24 @@ export default function SearchBar({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto mb-8 space-y-3">
-      <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+    <nav id="weather-search-navigation" aria-label="City Weather Search" className="w-full max-w-3xl mx-auto mb-8 space-y-3">
+      <form id="weather-search-form" onSubmit={handleSubmit} className="relative flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           <input
+            id="weather-search-input"
             type="text"
             value={city}
+            aria-label="Search city name"
             onChange={(e) => setCity(e.target.value)}
             placeholder="Search any city worldwide (e.g. Tokyo, Berlin)..."
             className="w-full pl-12 pr-10 py-3.5 rounded-2xl glass-input placeholder-slate-400 text-slate-100 text-sm md:text-base focus:outline-none"
           />
           {city && (
             <button
+              id="search-clear-button"
               type="button"
+              aria-label="Clear search query"
               onClick={handleClear}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 transition-colors rounded-full hover:bg-slate-800/50"
             >
@@ -67,7 +71,9 @@ export default function SearchBar({
         </div>
 
         <button
+          id="search-submit-button"
           type="submit"
+          aria-label="Submit city search"
           disabled={loading || !city.trim()}
           className="px-5 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-2xl shadow-lg shadow-cyan-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm md:text-base shrink-0"
         >
@@ -75,8 +81,10 @@ export default function SearchBar({
         </button>
 
         <button
+          id="map-modal-trigger-button"
           type="button"
           onClick={onOpenMap}
+          aria-label="Open world map location selector"
           title="Select location on world map"
           className="p-3.5 glass-panel-interactive text-purple-400 hover:text-purple-300 rounded-2xl transition-all duration-300 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
         >
@@ -84,10 +92,11 @@ export default function SearchBar({
           <span className="hidden sm:inline text-xs font-semibold">Map</span>
         </button>
 
-
         <button
+          id="geo-location-trigger-button"
           type="button"
           onClick={onLocationClick}
+          aria-label="Get current location weather"
           disabled={loading}
           title="Use current location"
           className="p-3.5 glass-panel-interactive text-cyan-400 hover:text-cyan-300 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center"
@@ -97,21 +106,23 @@ export default function SearchBar({
       </form>
 
       {/* Quick Favorite Cities */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
+      <div id="popular-cities-chips" className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
           <Sparkles className="w-3 h-3 text-cyan-400" /> Popular:
         </span>
         {POPULAR_CITIES.map((popularCity) => (
           <button
             key={popularCity}
+            id={`popular-city-${popularCity.toLowerCase().replace(/\s+/g, '-')}`}
             onClick={() => handleQuickCityClick(popularCity)}
             disabled={loading}
+            aria-label={`Search weather for ${popularCity}`}
             className="glass-chip px-3 py-1 rounded-full text-xs text-slate-300 hover:text-cyan-300 transition-all shrink-0 cursor-pointer disabled:opacity-50"
           >
             {popularCity}
           </button>
         ))}
       </div>
-    </div>
+    </nav>
   );
 }

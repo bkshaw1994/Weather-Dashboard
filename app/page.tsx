@@ -16,7 +16,7 @@ import {
 import type { WeatherData, ForecastData } from "@/types/weather";
 import { CloudSun, RefreshCw, AlertCircle, Clock } from "lucide-react";
 
-// Dynamically import Leaflet Map Modal with SSR disabled to prevent server-side Leaflet window errors
+// Dynamically import Leaflet Map Modal with SSR disabled
 const LocationMapModal = dynamic(
   () => import("@/components/LocationMapModal"),
   { ssr: false }
@@ -171,21 +171,22 @@ export default function Home() {
 
   return (
     <main
+      id="main-weather-app"
       className={`min-h-screen ${getWeatherThemeClass()} transition-colors duration-1000 px-4 py-6 md:px-8 md:py-10 text-slate-100`}
     >
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Top Navbar Header */}
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-4 glass-panel px-6 py-4 rounded-3xl mb-8">
+        <header id="app-header" className="flex flex-col sm:flex-row items-center justify-between gap-4 glass-panel px-6 py-4 rounded-3xl mb-8">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30">
               <CloudSun className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">
+              <h1 id="app-title" className="text-xl md:text-2xl font-black text-white tracking-tight">
                 ATMOSPHERE
               </h1>
               <p className="text-xs text-slate-400 font-medium">
-                Real-Time Weather Intelligence
+                Real-Time Weather Intelligence & Analytics
               </p>
             </div>
           </div>
@@ -193,15 +194,17 @@ export default function Home() {
           <div className="flex items-center gap-4">
             {/* Live Clock */}
             {currentTime && (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 glass-chip px-3 py-1.5 rounded-full font-medium">
+              <div id="live-clock-badge" className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 glass-chip px-3 py-1.5 rounded-full font-medium">
                 <Clock className="w-3.5 h-3.5 text-cyan-400" />
                 <span>{currentTime}</span>
               </div>
             )}
 
             {/* °C / °F Unit Switcher Toggle */}
-            <div className="flex items-center gap-1 glass-panel p-1 rounded-2xl border border-white/10">
+            <div id="unit-switcher-container" className="flex items-center gap-1 glass-panel p-1 rounded-2xl border border-white/10" aria-label="Temperature unit selection">
               <button
+                id="unit-celsius-btn"
+                aria-label="Switch to Celsius"
                 onClick={() => setIsCelsius(true)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
                   isCelsius
@@ -212,6 +215,8 @@ export default function Home() {
                 °C
               </button>
               <button
+                id="unit-fahrenheit-btn"
+                aria-label="Switch to Fahrenheit"
                 onClick={() => setIsCelsius(false)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
                   !isCelsius
@@ -235,7 +240,7 @@ export default function Home() {
 
         {/* Location Status Badge */}
         {locationStatus && !loading && (
-          <div className="text-center -mt-4 mb-4">
+          <div id="location-status-badge" className="text-center -mt-4 mb-4">
             <span className="text-xs text-slate-400 bg-slate-900/40 border border-white/5 px-3 py-1 rounded-full">
               {locationStatus}
             </span>
@@ -244,53 +249,63 @@ export default function Home() {
 
         {/* Shimmer Skeleton Loader */}
         {loading && (
-          <div className="space-y-6">
+          <section id="weather-skeleton-loader" aria-label="Loading weather data" className="space-y-6">
             <div className="h-64 rounded-3xl animate-shimmer glass-panel" />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="h-72 rounded-3xl animate-shimmer glass-panel" />
               <div className="h-72 rounded-3xl animate-shimmer glass-panel" />
             </div>
             <div className="h-48 rounded-3xl animate-shimmer glass-panel" />
-          </div>
+          </section>
         )}
 
         {/* Error Alert View */}
         {error && !loading && (
-          <div className="glass-panel border-rose-500/30 bg-rose-950/30 text-rose-200 p-6 rounded-3xl max-w-xl mx-auto text-center space-y-4 shadow-xl">
+          <section id="weather-error-alert" role="alert" className="glass-panel border-rose-500/30 bg-rose-950/30 text-rose-200 p-6 rounded-3xl max-w-xl mx-auto text-center space-y-4 shadow-xl">
             <div className="inline-flex p-3 rounded-full bg-rose-500/10 text-rose-400 mb-1">
               <AlertCircle className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold">Unable to Fetch Weather</h3>
+            <h2 className="text-lg font-bold">Unable to Fetch Weather Data</h2>
             <p className="text-sm text-rose-300">{error}</p>
             <button
+              id="error-retry-button"
               onClick={() => fetchWeatherData(city || "London")}
               className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-medium text-sm rounded-xl transition-all inline-flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" /> Try Again
             </button>
-          </div>
+          </section>
         )}
 
         {/* Weather Dashboard View */}
         {!loading && !error && weatherData && (
           <div className="space-y-8 animate-fade-in">
             {/* Hero Main Weather Card */}
-            <WeatherCard data={weatherData} isCelsius={isCelsius} />
+            <section id="hero-weather-section" aria-label="Current Weather Overview">
+              <WeatherCard data={weatherData} isCelsius={isCelsius} />
+            </section>
 
             {/* Grid Layout: Details & 24h Trend Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <section id="weather-analytics-grid" aria-label="Weather Analytics and Chart" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <WeatherDetails data={weatherData} />
               {forecastData && (
                 <TemperatureChart data={forecastData} isCelsius={isCelsius} />
               )}
-            </div>
+            </section>
 
             {/* Hourly & 5-Day Forecast Sections */}
             {forecastData && (
-              <ForecastCards data={forecastData} isCelsius={isCelsius} />
+              <section id="forecast-outlook-section" aria-label="Hourly and 5-Day Forecast">
+                <ForecastCards data={forecastData} isCelsius={isCelsius} />
+              </section>
             )}
           </div>
         )}
+
+        {/* Footer */}
+        <footer id="app-footer" className="text-center pt-8 pb-4 text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} Atmosphere Weather Dashboard — Real-time weather intelligence and analytics.</p>
+        </footer>
 
         {/* Leaflet Interactive Location Map Modal */}
         <LocationMapModal
