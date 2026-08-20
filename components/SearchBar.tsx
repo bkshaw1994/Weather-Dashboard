@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Search, MapPin, X, Sparkles } from "lucide-react";
+import { Search, MapPin, Map, X, Sparkles } from "lucide-react";
 
 interface SearchBarProps {
   onSearch: (city: string) => void;
   onLocationClick: () => void;
+  onOpenMap: () => void;
   loading: boolean;
 }
 
@@ -18,7 +19,12 @@ const POPULAR_CITIES = [
   "Dubai",
 ];
 
-export default function SearchBar({ onSearch, onLocationClick, loading }: SearchBarProps) {
+export default function SearchBar({
+  onSearch,
+  onLocationClick,
+  onOpenMap,
+  loading,
+}: SearchBarProps) {
   const [city, setCity] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,9 +69,20 @@ export default function SearchBar({ onSearch, onLocationClick, loading }: Search
         <button
           type="submit"
           disabled={loading || !city.trim()}
-          className="px-6 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-2xl shadow-lg shadow-cyan-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm md:text-base shrink-0"
+          className="px-5 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-2xl shadow-lg shadow-cyan-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm md:text-base shrink-0"
         >
           <span>Search</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenMap}
+          disabled={loading}
+          title="Select location on world map"
+          className="p-3.5 glass-panel-interactive text-purple-400 hover:text-purple-300 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center gap-1.5"
+        >
+          <Map className="w-5 h-5" />
+          <span className="hidden sm:inline text-xs font-semibold">Map</span>
         </button>
 
         <button
@@ -75,7 +92,7 @@ export default function SearchBar({ onSearch, onLocationClick, loading }: Search
           title="Use current location"
           className="p-3.5 glass-panel-interactive text-cyan-400 hover:text-cyan-300 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center"
         >
-          <MapPin className="w-5 h-5 animate-bounce-subtle" />
+          <MapPin className="w-5 h-5" />
         </button>
       </form>
 

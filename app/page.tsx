@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import SearchBar from "@/components/SearchBar";
 import WeatherCard from "@/components/WeatherCard";
 import TemperatureChart from "@/components/TemperatureChart";
@@ -15,6 +16,12 @@ import {
 import type { WeatherData, ForecastData } from "@/types/weather";
 import { CloudSun, RefreshCw, AlertCircle, Clock } from "lucide-react";
 
+// Dynamically import Leaflet Map Modal with SSR disabled to prevent server-side Leaflet window errors
+const LocationMapModal = dynamic(
+  () => import("@/components/LocationMapModal"),
+  { ssr: false }
+);
+
 export default function Home() {
   const [city, setCity] = useState("");
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
@@ -24,6 +31,13 @@ export default function Home() {
   const [locationStatus, setLocationStatus] = useState<string>("Detecting location...");
   const [isCelsius, setIsCelsius] = useState(true);
   const [currentTime, setCurrentTime] = useState<string>("");
+
+  // Map Modal state
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number }>({
+    lat: 51.5074,
+    lon: -0.1278,
+  });
 
   // Update live clock
   useEffect(() => {
@@ -67,6 +81,36 @@ export default function Home() {
     }
   }, []);
 
+  const fetchWeatherByCoords = useCallback(
+    async (lat: number, lon: number) => {
+      setLoading(true);
+      setError(null);
+      setLocationStatus("Fetching weather for selected coordinates...");
+
+      try {
+        const [weather, forecast] = await Promise.all([
+          getWeatherByCoordinates(lat, lon),
+          getForecastByCoordinates(lat, lon),
+        ]);
+
+        setWeatherData(weather);
+        setForecastData(forecast);
+        setCity(weather.name);
+        setMapCoords({ lat, lon });
+        setLocationStatus(`Weather for ${weather.name} (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch weather for selected location."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const getCurrentLocationWeather = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -78,16 +122,8 @@ export default function Home() {
           try {
             setLocationStatus("Fetching local weather...");
             const { latitude, longitude } = position.coords;
-            const [weather, forecast] = await Promise.all([
-              getWeatherByCoordinates(latitude, longitude),
-              getForecastByCoordinates(latitude, longitude),
-            ]);
-
-            setWeatherData(weather);
-            setForecastData(forecast);
-            setCity(weather.name);
-            setLocationStatus("Using your exact current location");
-            setLoading(false);
+            setMapCoords({ lat: latitude, lon: longitude });
+            await fetchWeatherByCoords(latitude, longitude);
           } catch (err) {
             setLocationStatus("Location weather unavailable. Defaulting to London.");
             fetchWeatherData("London");
@@ -107,7 +143,7 @@ export default function Home() {
       setLocationStatus("Geolocation unavailable. Defaulting to London.");
       fetchWeatherData("London");
     }
-  }, [fetchWeatherData]);
+  }, [fetchWeatherData, fetchWeatherByCoords]);
 
   useEffect(() => {
     getCurrentLocationWeather();
@@ -115,6 +151,10 @@ export default function Home() {
 
   const handleSearch = (cityName: string) => {
     fetchWeatherData(cityName);
+  };
+
+  const handleSelectMapLocation = (lat: number, lon: number) => {
+    fetchWeatherByCoords(lat, lon);
   };
 
   // Determine atmospheric background theme based on active weather code
@@ -189,6 +229,7 @@ export default function Home() {
         <SearchBar
           onSearch={handleSearch}
           onLocationClick={getCurrentLocationWeather}
+          onOpenMap={() => setIsMapOpen(true)}
           loading={loading}
         />
 
@@ -250,6 +291,15 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* Leaflet Interactive Location Map Modal */}
+        <LocationMapModal
+          isOpen={isMapOpen}
+          onClose={() => setIsMapOpen(false)}
+          onSelectLocation={handleSelectMapLocation}
+          initialLat={mapCoords.lat}
+          initialLon={mapCoords.lon}
+        />
       </div>
     </main>
   );
