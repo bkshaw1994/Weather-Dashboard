@@ -92,9 +92,9 @@ export default function LocationMapModal({
           zoomControl: false,
         });
 
-        // Add CartoDB Dark Matter tiles
+        // Add CartoDB Voyager Light theme map tiles
         L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
           {
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -104,6 +104,7 @@ export default function LocationMapModal({
         ).addTo(map);
 
         L.control.zoom({ position: "topright" }).addTo(map);
+
 
         const marker = L.marker([selectedCoords.lat, selectedCoords.lon], {
           icon: customIcon,
@@ -259,7 +260,8 @@ export default function LocationMapModal({
         </div>
 
         {/* Map Body Container */}
-        <div className="relative flex-1 w-full bg-slate-950 overflow-hidden cursor-crosshair">
+        <div className="relative flex-1 w-full bg-slate-100 overflow-hidden cursor-crosshair">
+
           <div
             ref={mapContainerRef}
             className="w-full h-full min-h-[350px] z-10 pointer-events-auto"
