@@ -1,157 +1,321 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import SearchBar from "@/components/SearchBar";
 import WeatherCard from "@/components/WeatherCard";
 import TemperatureChart from "@/components/TemperatureChart";
 import WeatherDetails from "@/components/WeatherDetails";
 import ForecastCards from "@/components/ForecastCards";
-import { getWeatherData, getForecastData, getWeatherByCoordinates, getForecastByCoordinates } from "@/lib/weatherApi";
+import {
+  getWeatherData,
+  getForecastData,
+  getWeatherByCoordinates,
+  getForecastByCoordinates,
+} from "@/lib/weatherApi";
 import type { WeatherData, ForecastData } from "@/types/weather";
+import { CloudSun, RefreshCw, AlertCircle, Clock } from "lucide-react";
+
+// Dynamically import Leaflet Map Modal with SSR disabled
+const LocationMapModal = dynamic(
+  () => import("@/components/LocationMapModal"),
+  { ssr: false }
+);
 
 export default function Home() {
-    const [city, setCity] = useState("");
-    const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-    const [forecastData, setForecastData] = useState<ForecastData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [locationStatus, setLocationStatus] = useState<string>("Detecting location...");
+  const [city, setCity] = useState("");
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [forecastData, setForecastData] = useState<ForecastData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<string>("Detecting location...");
+  const [isCelsius, setIsCelsius] = useState(true);
+  const [currentTime, setCurrentTime] = useState<string>("");
 
-    useEffect(() => {
-        getCurrentLocationWeather();
-    }, []);
+  // Map Modal state
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number }>({
+    lat: 51.5074,
+    lon: -0.1278,
+  });
 
-    const getCurrentLocationWeather = () => {
-        setLoading(true);
-        setError(null);
-        setLocationStatus("Getting your location...");
+  // Update live clock
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    try {
-                        setLocationStatus("Fetching weather for your location...");
-                        const { latitude, longitude } = position.coords;
-                        const [weather, forecast] = await Promise.all([
-                            getWeatherByCoordinates(latitude, longitude),
-                            getForecastByCoordinates(latitude, longitude),
-                        ]);
+  const fetchWeatherData = useCallback(async (cityName: string) => {
+    setLoading(true);
+    setError(null);
 
-                        setWeatherData(weather);
-                        setForecastData(forecast);
-                        setCity(weather.name);
-                        setLocationStatus("Using your current location");
-                        setLoading(false);
-                    } catch (err) {
-                        setLocationStatus("Failed to get location weather");
-                        setError(err instanceof Error ? err.message : "Failed to fetch weather data");
-                        fetchWeatherData("London");
-                    }
-                },
-                (err) => {
-                    let message = "Location access denied. ";
-                    if (err.code === 1) {
-                        message = "Location permission denied. Please enable location access in your browser settings. ";
-                    } else if (err.code === 2) {
-                        message = "Location unavailable. Make sure Wi-Fi is enabled and location services are turned on. ";
-                    } else if (err.code === 3) {
-                        message = "Location request timed out. ";
-                    }
-                    setLocationStatus(message + "Showing London instead.");
-                    fetchWeatherData("London");
-                },
-                {
-                    enableHighAccuracy: false,
-                    timeout: 10000,
-                    maximumAge: 0,
-                }
-            );
-        } else {
-            setLocationStatus("Geolocation not supported. Showing London.");
+    try {
+      const [weather, forecast] = await Promise.all([
+        getWeatherData(cityName),
+        getForecastData(cityName),
+      ]);
+
+      setWeatherData(weather);
+      setForecastData(forecast);
+      setCity(cityName);
+      setLocationStatus(`Showing weather for ${cityName}`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch weather data."
+      );
+      setWeatherData(null);
+      setForecastData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchWeatherByCoords = useCallback(
+    async (lat: number, lon: number) => {
+      setLoading(true);
+      setError(null);
+      setLocationStatus("Fetching weather for selected coordinates...");
+
+      try {
+        const [weather, forecast] = await Promise.all([
+          getWeatherByCoordinates(lat, lon),
+          getForecastByCoordinates(lat, lon),
+        ]);
+
+        setWeatherData(weather);
+        setForecastData(forecast);
+        setCity(weather.name);
+        setMapCoords({ lat, lon });
+        setLocationStatus(`Weather for ${weather.name} (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch weather for selected location."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const getCurrentLocationWeather = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setLocationStatus("Getting your position...");
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            setLocationStatus("Fetching local weather...");
+            const { latitude, longitude } = position.coords;
+            setMapCoords({ lat: latitude, lon: longitude });
+            await fetchWeatherByCoords(latitude, longitude);
+          } catch (err) {
+            setLocationStatus("Location weather unavailable. Defaulting to London.");
             fetchWeatherData("London");
+          }
+        },
+        () => {
+          setLocationStatus("Location access denied. Defaulting to London.");
+          fetchWeatherData("London");
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 8000,
+          maximumAge: 0,
         }
-    };
+      );
+    } else {
+      setLocationStatus("Geolocation unavailable. Defaulting to London.");
+      fetchWeatherData("London");
+    }
+  }, [fetchWeatherData, fetchWeatherByCoords]);
 
-    const fetchWeatherData = async (cityName: string) => {
-        setLoading(true);
-        setError(null);
+  useEffect(() => {
+    getCurrentLocationWeather();
+  }, [getCurrentLocationWeather]);
 
-        try {
-            const [weather, forecast] = await Promise.all([
-                getWeatherData(cityName),
-                getForecastData(cityName),
-            ]);
+  const handleSearch = (cityName: string) => {
+    fetchWeatherData(cityName);
+  };
 
-            setWeatherData(weather);
-            setForecastData(forecast);
-            setCity(cityName);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to fetch weather data");
-            setWeatherData(null);
-            setForecastData(null);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSelectMapLocation = (lat: number, lon: number) => {
+    fetchWeatherByCoords(lat, lon);
+  };
 
-    const handleSearch = (cityName: string) => {
-        setCity(cityName);
-        setLocationStatus("");
-        fetchWeatherData(cityName);
-    };
+  // Determine atmospheric background theme based on active weather code
+  const getWeatherThemeClass = () => {
+    if (!weatherData) return "weather-bg-clear";
+    const code = weatherData.weather[0]?.id || 0;
+    if (code === 0 || code === 1) return "weather-bg-clear";
+    if (code === 2 || code === 3 || (code >= 45 && code <= 48)) return "weather-bg-clouds";
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "weather-bg-rain";
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return "weather-bg-snow";
+    if (code >= 95) return "weather-bg-thunder";
+    return "weather-bg-clear";
+  };
 
-    return (
-        <main className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4 md:p-8">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 text-gray-800 dark:text-white">
-                    Weather Dashboard
-                </h1>
-
-                {locationStatus && (
-                    <div className="text-center mb-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{locationStatus}</p>
-                    </div>
-                )}
-
-                <div className="flex justify-center mb-4">
-                    <button
-                        onClick={getCurrentLocationWeather}
-                        disabled={loading}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        <span>📍</span>
-                        Use Current Location
-                    </button>
-                </div>
-
-                <SearchBar onSearch={handleSearch} />
-
-                {loading && (
-                    <div className="text-center py-12">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        <p className="mt-4 text-gray-600 dark:text-gray-300">Loading weather data...</p>
-                    </div>
-                )}
-
-                {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
-                        {error}
-                    </div>
-                )}
-
-                {!loading && !error && weatherData && (
-                    <div className="space-y-6">
-                        <WeatherCard data={weatherData} />
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <WeatherDetails data={weatherData} />
-                            {forecastData && <TemperatureChart data={forecastData} />}
-                        </div>
-
-                        {forecastData && <ForecastCards data={forecastData} />}
-                    </div>
-                )}
+  return (
+    <main
+      id="main-weather-app"
+      className={`min-h-screen ${getWeatherThemeClass()} transition-colors duration-1000 px-4 py-6 md:px-8 md:py-10 text-slate-100`}
+    >
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Top Navbar Header */}
+        <header id="app-header" className="flex flex-col sm:flex-row items-center justify-between gap-4 glass-panel px-6 py-4 rounded-3xl mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30">
+              <CloudSun className="w-7 h-7 text-white" />
             </div>
-        </main>
-    );
+            <div>
+              <h1 id="app-title" className="text-xl md:text-2xl font-black text-white tracking-tight">
+                ATMOSPHERE
+              </h1>
+              <p className="text-xs text-slate-400 font-medium">
+                Real-Time Weather Intelligence & Analytics
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Live Clock */}
+            {currentTime && (
+              <div id="live-clock-badge" className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 glass-chip px-3 py-1.5 rounded-full font-medium">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{currentTime}</span>
+              </div>
+            )}
+
+            {/* °C / °F Unit Switcher Toggle */}
+            <div id="unit-switcher-container" className="flex items-center gap-1 glass-panel p-1 rounded-2xl border border-white/10" aria-label="Temperature unit selection">
+              <button
+                id="unit-celsius-btn"
+                aria-label="Switch to Celsius"
+                onClick={() => setIsCelsius(true)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  isCelsius
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                °C
+              </button>
+              <button
+                id="unit-fahrenheit-btn"
+                aria-label="Switch to Fahrenheit"
+                onClick={() => setIsCelsius(false)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  !isCelsius
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                °F
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Search Bar & City Chips */}
+        <SearchBar
+          onSearch={handleSearch}
+          onLocationClick={getCurrentLocationWeather}
+          onOpenMap={() => setIsMapOpen(true)}
+          loading={loading}
+        />
+
+        {/* Location Status Badge */}
+        {locationStatus && !loading && (
+          <div id="location-status-badge" className="text-center -mt-4 mb-4">
+            <span className="text-xs text-slate-400 bg-slate-900/40 border border-white/5 px-3 py-1 rounded-full">
+              {locationStatus}
+            </span>
+          </div>
+        )}
+
+        {/* Shimmer Skeleton Loader */}
+        {loading && (
+          <section id="weather-skeleton-loader" aria-label="Loading weather data" className="space-y-6">
+            <div className="h-64 rounded-3xl animate-shimmer glass-panel" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-72 rounded-3xl animate-shimmer glass-panel" />
+              <div className="h-72 rounded-3xl animate-shimmer glass-panel" />
+            </div>
+            <div className="h-48 rounded-3xl animate-shimmer glass-panel" />
+          </section>
+        )}
+
+        {/* Error Alert View */}
+        {error && !loading && (
+          <section id="weather-error-alert" role="alert" className="glass-panel border-rose-500/30 bg-rose-950/30 text-rose-200 p-6 rounded-3xl max-w-xl mx-auto text-center space-y-4 shadow-xl">
+            <div className="inline-flex p-3 rounded-full bg-rose-500/10 text-rose-400 mb-1">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <h2 className="text-lg font-bold">Unable to Fetch Weather Data</h2>
+            <p className="text-sm text-rose-300">{error}</p>
+            <button
+              id="error-retry-button"
+              onClick={() => fetchWeatherData(city || "London")}
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-medium text-sm rounded-xl transition-all inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" /> Try Again
+            </button>
+          </section>
+        )}
+
+        {/* Weather Dashboard View */}
+        {!loading && !error && weatherData && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Hero Main Weather Card */}
+            <section id="hero-weather-section" aria-label="Current Weather Overview">
+              <WeatherCard data={weatherData} isCelsius={isCelsius} />
+            </section>
+
+            {/* Grid Layout: Details & 24h Trend Chart */}
+            <section id="weather-analytics-grid" aria-label="Weather Analytics and Chart" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <WeatherDetails data={weatherData} />
+              {forecastData && (
+                <TemperatureChart data={forecastData} isCelsius={isCelsius} />
+              )}
+            </section>
+
+            {/* Hourly & 5-Day Forecast Sections */}
+            {forecastData && (
+              <section id="forecast-outlook-section" aria-label="Hourly and 5-Day Forecast">
+                <ForecastCards data={forecastData} isCelsius={isCelsius} />
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer id="app-footer" className="text-center pt-8 pb-4 text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} Atmosphere Weather Dashboard — Real-time weather intelligence and analytics.</p>
+        </footer>
+
+        {/* Leaflet Interactive Location Map Modal */}
+        <LocationMapModal
+          isOpen={isMapOpen}
+          onClose={() => setIsMapOpen(false)}
+          onSelectLocation={handleSelectMapLocation}
+          initialLat={mapCoords.lat}
+          initialLon={mapCoords.lon}
+        />
+      </div>
+    </main>
+  );
 }
