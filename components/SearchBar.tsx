@@ -77,13 +77,13 @@ export default function SearchBar({
         <button
           type="button"
           onClick={onOpenMap}
-          disabled={loading}
           title="Select location on world map"
-          className="p-3.5 glass-panel-interactive text-purple-400 hover:text-purple-300 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center gap-1.5"
+          className="p-3.5 glass-panel-interactive text-purple-400 hover:text-purple-300 rounded-2xl transition-all duration-300 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Map className="w-5 h-5" />
           <span className="hidden sm:inline text-xs font-semibold">Map</span>
         </button>
+
 
         <button
           type="button"
