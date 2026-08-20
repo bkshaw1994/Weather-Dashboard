@@ -1,38 +1,100 @@
 "use client";
 
 import { useState } from "react";
+import { Search, MapPin, X, Sparkles } from "lucide-react";
 
 interface SearchBarProps {
-    onSearch: (city: string) => void;
+  onSearch: (city: string) => void;
+  onLocationClick: () => void;
+  loading: boolean;
 }
 
-export default function SearchBar({ onSearch }: SearchBarProps) {
-    const [city, setCity] = useState("");
+const POPULAR_CITIES = [
+  "London",
+  "Tokyo",
+  "New York",
+  "Paris",
+  "Sydney",
+  "Dubai",
+];
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (city.trim()) {
-            onSearch(city.trim());
-        }
-    };
+export default function SearchBar({ onSearch, onLocationClick, loading }: SearchBarProps) {
+  const [city, setCity] = useState("");
 
-    return (
-        <form onSubmit={handleSubmit} className="mb-8">
-            <div className="flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto">
-                <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Enter city name..."
-                    className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-                <button
-                    type="submit"
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                    Search
-                </button>
-            </div>
-        </form>
-    );
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (city.trim()) {
+      onSearch(city.trim());
+    }
+  };
+
+  const handleQuickCityClick = (cityName: string) => {
+    setCity(cityName);
+    onSearch(cityName);
+  };
+
+  const handleClear = () => {
+    setCity("");
+  };
+
+  return (
+    <div className="w-full max-w-3xl mx-auto mb-8 space-y-3">
+      <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Search any city worldwide (e.g. Tokyo, Berlin)..."
+            className="w-full pl-12 pr-10 py-3.5 rounded-2xl glass-input placeholder-slate-400 text-slate-100 text-sm md:text-base focus:outline-none"
+          />
+          {city && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 transition-colors rounded-full hover:bg-slate-800/50"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !city.trim()}
+          className="px-6 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-2xl shadow-lg shadow-cyan-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm md:text-base shrink-0"
+        >
+          <span>Search</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onLocationClick}
+          disabled={loading}
+          title="Use current location"
+          className="p-3.5 glass-panel-interactive text-cyan-400 hover:text-cyan-300 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center"
+        >
+          <MapPin className="w-5 h-5 animate-bounce-subtle" />
+        </button>
+      </form>
+
+      {/* Quick Favorite Cities */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
+          <Sparkles className="w-3 h-3 text-cyan-400" /> Popular:
+        </span>
+        {POPULAR_CITIES.map((popularCity) => (
+          <button
+            key={popularCity}
+            onClick={() => handleQuickCityClick(popularCity)}
+            disabled={loading}
+            className="glass-chip px-3 py-1 rounded-full text-xs text-slate-300 hover:text-cyan-300 transition-all shrink-0 cursor-pointer disabled:opacity-50"
+          >
+            {popularCity}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
